@@ -210,7 +210,109 @@ async function setUserRole({ login, role, organization }) {
   }
 }
 
+async function setUserActive({ login, active }) {
+  if (!login || typeof login !== 'string') {
+    throw new Error('login is required');
+  }
+
+  if (typeof active !== 'boolean') {
+    throw new Error('active must be a boolean');
+  }
+
+  const user = await findUserByLogin(login.trim());
+
+  if (!user) {
+    return null;
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const activeResult = await client.query(
+      `
+        SELECT id, role_id, organization_id
+        FROM user_details
+        WHERE user_id = $1 AND active = true
+        ORDER BY active_from DESC, id DESC
+        FOR UPDATE
+      `,
+      [user.id]
+    );
+
+    const current = activeResult.rows[0] || null;
+
+    if (!active) {
+      if (current) {
+        await client.query(
+          `
+            UPDATE user_details
+            SET active = false,
+                active_to = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND active = true
+          `,
+          [user.id]
+        );
+      }
+
+      await client.query('COMMIT');
+      return {
+        ...formatUserRoleResponse(user, null),
+        is_active: false,
+      };
+    }
+
+    if (!current) {
+      const latestResult = await client.query(
+        `
+          SELECT role_id, organization_id
+          FROM user_details
+          WHERE user_id = $1
+          ORDER BY active_from DESC, id DESC
+          LIMIT 1
+        `,
+        [user.id]
+      );
+
+      const latest = latestResult.rows[0];
+
+      if (!latest) {
+        throw new Error('User has no role assignment to activate');
+      }
+
+      await client.query(
+        `
+          INSERT INTO user_details (
+            user_id,
+            role_id,
+            organization_id,
+            active,
+            active_from,
+            active_to
+          )
+          VALUES ($1, $2, $3, true, CURRENT_TIMESTAMP, NULL)
+        `,
+        [user.id, latest.role_id, latest.organization_id]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    const role = await getUserRole(login);
+    return role ? { ...role, is_active: true } : null;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   getUserRole,
   setUserRole,
+  setUserActive,
 };

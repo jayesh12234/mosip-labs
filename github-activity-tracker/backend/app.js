@@ -42,6 +42,7 @@ app.get('/', (req, res) => {
       'POST /admin/sync/issues': 'Sync GitHub issues for all repositories in DB',
       'POST /admin/users/role': 'Assign or change job role for a GitHub user',
       'GET /admin/users/:login/role': 'Fetch job role for a GitHub user',
+      'POST /admin/users/active': 'Activate or deactivate a GitHub user',
       'GET /orgs/user-roles': 'List assignable user job roles',
       'GET /orgs/organizations': 'List tracked GitHub organizations',
     },

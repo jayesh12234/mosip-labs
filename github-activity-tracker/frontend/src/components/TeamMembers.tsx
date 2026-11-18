@@ -271,9 +271,6 @@ const TeamMembers: React.FC<TeamMembersProps> = ({
 
                 <td className="px-4 py-4 text-left text-slate-600">
                   {m.role || "—"}
-                  {m.role && m.is_active === false && (
-                    <span className="ml-2 text-xs text-slate-400">(inactive)</span>
-                  )}
                 </td>
 
                 <td className="px-4 py-4 text-center">

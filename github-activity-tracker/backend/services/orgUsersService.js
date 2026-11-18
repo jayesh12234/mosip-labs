@@ -91,7 +91,7 @@ async function fetchAssignments(orgId, role) {
   // Assignments explicitly tied to another organization are excluded; rows
   // without an organization remain visible for every org.
   const whereClauses = [
-    "(ud.active = true OR ud.role_id IS NOT NULL)",
+    "ud.active = true",
     "(ud.organization_id IS NULL OR LOWER(o.slug) = $1)",
   ];
 
@@ -130,7 +130,7 @@ async function fetchAssignmentActivityMap(orgId, role, start, end) {
       AND (ud.active_to IS NULL OR e.created_at < ud.active_to)
     LEFT JOIN user_roles ur ON ur.id = ud.role_id
     WHERE LOWER(r.owner) = $1
-      AND (ud.active = true OR ud.role_id IS NOT NULL)
+      AND ud.active = true
   `;
 
   if (Array.isArray(EXCLUDED_GITHUB_LOGINS) && EXCLUDED_GITHUB_LOGINS.length > 0) {
