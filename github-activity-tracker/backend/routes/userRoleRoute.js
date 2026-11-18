@@ -1,9 +1,8 @@
 /**
  * Routes:
- *   GET  /admin/users/:login/role    – fetch role for a GitHub user
- *   POST /admin/users/role           – assign or change role for a GitHub user
- *   GET  /admin/users/:login/active  – fetch active status for a GitHub user
- *   POST /admin/users/active         – activate or deactivate a GitHub user
+ *   GET  /admin/users/:login/role  – fetch role for a GitHub user
+ *   POST /admin/users/role         – assign or change role for a GitHub user
+ *   POST /admin/users/active       – activate or deactivate a GitHub user
  */
 const express = require('express');
 const { getUserRole, setUserRole, setUserActive } = require('../services/userRoleService');
@@ -111,41 +110,6 @@ router.post('/admin/users/role', async (req, res) => {
     return res.status(HTTP.INTERNAL_SERVER_ERROR).json({
       status: STATUS.ERROR,
       message: 'Failed to assign user role',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    });
-  }
-});
-
-router.get('/admin/users/:login/active', async (req, res) => {
-  try {
-    const { login } = req.params;
-
-    if (!login) {
-      return res.status(HTTP.BAD_REQUEST).json({
-        status: STATUS.ERROR,
-        message: 'login is required',
-      });
-    }
-
-    const user = await getUserRole(login);
-
-    if (!user) {
-      return res.status(HTTP.NOT_FOUND).json({
-        status: STATUS.ERROR,
-        message: 'User not found',
-      });
-    }
-
-    return res.json({
-      status: STATUS.SUCCESS,
-      user,
-    });
-  } catch (error) {
-    console.error('Error fetching user active status:', error);
-
-    return res.status(HTTP.INTERNAL_SERVER_ERROR).json({
-      status: STATUS.ERROR,
-      message: 'Failed to fetch user active status',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }

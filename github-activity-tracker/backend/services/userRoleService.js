@@ -39,7 +39,7 @@ async function getUserRole(login) {
 
   const detailsResult = await pool.query(
     `
-      SELECT ur.name AS role, o.slug AS organization, ud.active
+      SELECT ur.name AS role, o.slug AS organization
       FROM user_details ud
       LEFT JOIN user_roles ur ON ur.id = ud.role_id
       LEFT JOIN organizations o ON o.id = ud.organization_id
@@ -48,12 +48,7 @@ async function getUserRole(login) {
     [user.id]
   );
 
-  const details = detailsResult.rows[0] || null;
-
-  return {
-    ...formatUserRoleResponse(user, details),
-    is_active: Boolean(details?.active),
-  };
+  return formatUserRoleResponse(user, detailsResult.rows[0] || null);
 }
 
 async function resolveFirstAssignmentActiveFrom(client, userId) {
@@ -151,13 +146,10 @@ async function setUserRole({ login, role, organization }) {
       && active.organization_id === organizationId
     ) {
       await client.query('COMMIT');
-      return {
-        ...formatUserRoleResponse(user, {
-          role: trimmedRole,
-          organization: normalizedOrganization,
-        }),
-        is_active: true,
-      };
+      return formatUserRoleResponse(user, {
+        role: trimmedRole,
+        organization: normalizedOrganization,
+      });
     }
 
     const roleHistoryResult = await client.query(
@@ -206,13 +198,10 @@ async function setUserRole({ login, role, organization }) {
     );
 
     await client.query('COMMIT');
-    return {
-      ...formatUserRoleResponse(user, {
-        role: trimmedRole,
-        organization: normalizedOrganization,
-      }),
-      is_active: true,
-    };
+    return formatUserRoleResponse(user, {
+      role: trimmedRole,
+      organization: normalizedOrganization,
+    });
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -311,7 +300,9 @@ async function setUserActive({ login, active }) {
     }
 
     await client.query('COMMIT');
-    return getUserRole(login);
+
+    const role = await getUserRole(login);
+    return role ? { ...role, is_active: true } : null;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
