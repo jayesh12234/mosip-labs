@@ -62,6 +62,10 @@ const getLeaderboard = async (orgId, period = "weekly", limit = 10, role = null,
 
   params.push(String(orgId).toLowerCase());
   whereClauses.push(`LOWER(r.owner) = $${params.length}`);
+  whereClauses.push(`EXISTS (
+    SELECT 1 FROM user_details ud_active
+    WHERE ud_active.user_id = u.id AND ud_active.active = true
+  )`);
 
   if (Array.isArray(EXCLUDED_GITHUB_LOGINS) && EXCLUDED_GITHUB_LOGINS.length > 0) {
     params.push(EXCLUDED_GITHUB_LOGINS.map((l) => String(l).toLowerCase()));

@@ -1,10 +1,12 @@
 /**
  * Routes:
- *   GET  /admin/users/:login/role  – fetch role for a GitHub user
- *   POST /admin/users/role         – assign or change role for a GitHub user
+ *   GET  /admin/users/:login/role    – fetch role for a GitHub user
+ *   POST /admin/users/role           – assign or change role for a GitHub user
+ *   GET  /admin/users/:login/active  – fetch active status for a GitHub user
+ *   POST /admin/users/active         – activate or deactivate a GitHub user
  */
 const express = require('express');
-const { getUserRole, setUserRole } = require('../services/userRoleService');
+const { getUserRole, setUserRole, setUserActive } = require('../services/userRoleService');
 const { getUserRoleNames } = require('../services/userRolesService');
 const { getOrganizationNames } = require('../services/organizationsService');
 const { HTTP, STATUS } = require('../config/errorCodes');
@@ -109,6 +111,95 @@ router.post('/admin/users/role', async (req, res) => {
     return res.status(HTTP.INTERNAL_SERVER_ERROR).json({
       status: STATUS.ERROR,
       message: 'Failed to assign user role',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+router.get('/admin/users/:login/active', async (req, res) => {
+  try {
+    const { login } = req.params;
+
+    if (!login) {
+      return res.status(HTTP.BAD_REQUEST).json({
+        status: STATUS.ERROR,
+        message: 'login is required',
+      });
+    }
+
+    const user = await getUserRole(login);
+
+    if (!user) {
+      return res.status(HTTP.NOT_FOUND).json({
+        status: STATUS.ERROR,
+        message: 'User not found',
+      });
+    }
+
+    return res.json({
+      status: STATUS.SUCCESS,
+      user,
+    });
+  } catch (error) {
+    console.error('Error fetching user active status:', error);
+
+    return res.status(HTTP.INTERNAL_SERVER_ERROR).json({
+      status: STATUS.ERROR,
+      message: 'Failed to fetch user active status',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+});
+
+router.post('/admin/users/active', async (req, res) => {
+  try {
+    const { login, active } = req.body || {};
+
+    if (typeof login !== 'string' || !login.trim()) {
+      return res.status(HTTP.BAD_REQUEST).json({
+        status: STATUS.ERROR,
+        message: 'login is required in request body',
+      });
+    }
+
+    if (typeof active !== 'boolean') {
+      return res.status(HTTP.BAD_REQUEST).json({
+        status: STATUS.ERROR,
+        message: 'active must be a boolean (true or false)',
+      });
+    }
+
+    const user = await setUserActive({ login, active });
+
+    if (!user) {
+      return res.status(HTTP.NOT_FOUND).json({
+        status: STATUS.ERROR,
+        message: 'User not found',
+      });
+    }
+
+    return res.json({
+      status: STATUS.SUCCESS,
+      message: active ? 'User activated successfully' : 'User deactivated successfully',
+      user,
+    });
+  } catch (error) {
+    if (
+      error.message === 'User has no role assignment to activate'
+      || error.message === 'active must be a boolean'
+      || error.message === 'login is required'
+    ) {
+      return res.status(HTTP.BAD_REQUEST).json({
+        status: STATUS.ERROR,
+        message: error.message,
+      });
+    }
+
+    console.error('Error updating user active status:', error);
+
+    return res.status(HTTP.INTERNAL_SERVER_ERROR).json({
+      status: STATUS.ERROR,
+      message: 'Failed to update user active status',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
